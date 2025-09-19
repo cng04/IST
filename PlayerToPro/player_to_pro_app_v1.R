@@ -38,83 +38,6 @@ ui <- fluidPage(
   titlePanel("Player To Pro Dashboard"),
   p("Average statistics by number of USports seasons played (for players who went pro). Click a row to see individual players in a popup."),
   br(),
-
-  # Add CSS for main table bottom border
-  tags$head(tags$style(HTML("
-    .basic-transition-table {
-      border-bottom: 2px solid #dee2e6 !important;
-    }
-    #basic_transition_table_wrapper {
-      border-bottom: 2px solid #dee2e6 !important;
-      padding-bottom: 10px !important;
-    }
-    .dataTables_wrapper {
-      margin-bottom: 10px;
-    }
-  "))),
-
-  # ---- Conditional Filters Row ----
-  # conditionalPanel(
-  #   condition = "input.tabset != 'Pro Transition Analysis'",
-  #   fluidRow(
-  #     column(3, shinyWidgets::pickerInput(
-  #       "player", "Player Name",
-  #       choices = c("All", all_players_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     )),
-  #     column(3, shinyWidgets::pickerInput(
-  #       "position", "Position",
-  #       choices = c("All", positions_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     )),
-  #     column(3, shinyWidgets::pickerInput(
-  #       "usports_team", "USports Team",
-  #       choices = c("All", usports_teams_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     )),
-  #     column(3, shinyWidgets::pickerInput(
-  #       "pro_season", "Pro Season",
-  #       choices = c("All", pro_seasons_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     )),
-  #     column(3, shinyWidgets::pickerInput(
-  #       "league", "Pro League",
-  #       choices = c("All", leagues_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     ))
-  #   ),
-  #   br()
-  # ),
-  
-  # # ---- Pro Transition Analysis Filters ----
-  # conditionalPanel(
-  #   condition = "input.tabset == 'Pro Transition Analysis'",
-  #   fluidRow(
-  #     column(3, shinyWidgets::pickerInput(
-  #       "transition_position", "Position",
-  #       choices = c("All", positions_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     )),
-  #     column(3, shinyWidgets::pickerInput(
-  #       "transition_usports_team", "USports Team",
-  #       choices = c("All", usports_teams_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     )),
-  #     column(3, shinyWidgets::pickerInput(
-  #       "num_seasons_filter", "Number of USports Seasons Played",
-  #       choices = c("All", num_seasons_sorted),
-  #       multiple = TRUE,
-  #       options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")
-  #     ))
-  #   ),
-  #   br()
     fluidRow(
       column(3, shinyWidgets::pickerInput(
         "transition_position", "Position",
@@ -221,7 +144,11 @@ server <- function(input, output, session) {
         Avg_FTA = mean(as.numeric(.data$FTA), na.rm = TRUE),
         Avg_FT_percent = mean(as.numeric(.data$`FT%`), na.rm = TRUE),
         Avg_REB = mean(as.numeric(.data$REB), na.rm = TRUE),
-        Avg_PF = mean(as.numeric(.data$PF), na.rm = TRUE),
+        Avg_PF = ifelse(
+          is.nan(mean(as.numeric(PF), na.rm = TRUE)),
+          NA_real_,
+          mean(as.numeric(PF), na.rm = TRUE)
+        ),
         Avg_AST = mean(as.numeric(.data$AST), na.rm = TRUE),
         Avg_TOV = mean(as.numeric(.data$TOV), na.rm = TRUE),
         Avg_BLK = mean(as.numeric(.data$BLK), na.rm = TRUE),
@@ -430,7 +357,7 @@ server <- function(input, output, session) {
       # Show modal popup with custom width and close button
       showModal(modalDialog(
         title = div(
-          style = "display: flex; justify-content: space-between; align-items: center; margin: 0;",
+          style = "display: flex; justify-content: space-between; align-items: center; margin: 0",
           span(paste0("Individual Players (", selected_seasons_val, " USports Seasons)")),
           actionButton("modal_close_btn", "×",
                       style = "background: rgba(108, 117, 125, 0.1); border: 1px solid rgba(108, 117, 125, 0.2); border-radius: 4px; font-size: 18px; color: #6c757d; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1; transition: background-color 0.2s;",
