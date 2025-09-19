@@ -4,7 +4,7 @@ import numpy as np
 def main():
     # Load the data
     print("Loading USports data...")
-    usports_data = pd.read_excel("data/usports_stats_with_teams.xlsx")
+    usports_data = pd.read_excel("../data/usports_stats_with_teams.xlsx")
     
     # Filter to exclude Total rows
     usports_seasons_only = usports_data[usports_data['Season'] != 'Total'].copy()

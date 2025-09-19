@@ -19,6 +19,25 @@ extract_last_name <- function(full_name) {
   sapply(strsplit(full_name, " "), function(x) x[length(x)])
 }
 
+# Sort players by last name
+all_players <- unique(c(usports_data$Player, pro_data$Player))
+all_players_sorted <- all_players[order(extract_last_name(all_players))]
+
+# Calculate unique season counts dynamically from the data
+season_counts <- usports_data %>%
+  filter(Season != "Total") %>%
+  count(Player, name = "seasons") %>%
+  pull(seasons) %>%
+  unique()
+num_seasons_sorted <- sort(season_counts)
+
+# Sort pro seasons chronologically (descending - most recent first)
+pro_seasons_sorted <- sort(unique(pro_data$Season), decreasing = TRUE)
+
+# Sort leagues alphabetically
+leagues_sorted <- sort(unique(pro_data$League))
+
+# Sort USPORTS team
 usports_teams_sorted <- sort(unique(usports_data$`USports Team`))
 
 ui <- fluidPage(
