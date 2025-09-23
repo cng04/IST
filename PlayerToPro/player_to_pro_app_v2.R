@@ -169,30 +169,27 @@ server <- function(input, output, session) {
   observeEvent(input$compare_btn, {
     req(selected_usports_player(), selected_pro_player())
     
+    ## see why the player names in the csv have trailing / leading whitespaces
+    
     # ---- USPORTS side (left) ----
     usports_history <- current_players %>%
-      filter(Player == selected_usports_player()) %>%
-      arrange(Season)
-    
-    cat("Selected player:\n")
-    print(selected_usports_player())
-    
-    cat("Is selected player in dataset?\n")
-    print(selected_usports_player() %in% current_players$Player)
+      filter(
+        trimws(Player) == trimws(selected_usports_player())
+      ) %>% arrange(Season) %>% select(-Player, -`All Seasons`)
     
     # ---- Pro player USPORTS side (right, above) ----
     pro_usports_history <- pro_players_usports_data %>%
-      filter(Player == selected_pro_player(),
+      filter(trimws(Player) == trimws(selected_pro_player()),
              Season != "Total") %>%
       arrange(Season)
     
     # ---- Pro player PRO side (right, below) ----
     pro_history <- pro_data %>%
-      filter(Player == selected_pro_player()) %>%
+      filter(trimws(Player) == trimws(selected_pro_player())) %>%
       arrange(desc(Season))
     
     showModal(modalDialog(
-      title = paste("Compare:", selected_usports_player(), "vs", selected_pro_player()),
+      title = paste(selected_usports_player(), "vs", selected_pro_player()),
       size = "xl",
       easyClose = TRUE,
       footer = NULL,
@@ -212,7 +209,7 @@ server <- function(input, output, session) {
       fluidRow(
         column(
           6,
-          h4("Current USPORTS Player (All Seasons)"),
+          h4(paste(selected_usports_player(), " - USPORTS")),
           renderDT({
             datatable(
               usports_history,
@@ -223,7 +220,7 @@ server <- function(input, output, session) {
         ),
         column(
           6,
-          h4("Pro Player - USPORTS Seasons"),
+          h4(paste(selected_pro_player(), " - USPORTS")),
           renderDT({
             datatable(
               pro_usports_history,
@@ -232,7 +229,7 @@ server <- function(input, output, session) {
             )
           }),
           br(),
-          h4("Pro Player - Professional Career"),
+          h4(paste(selected_pro_player(), " - Professional Career")),
           renderDT({
             datatable(
               pro_history,
