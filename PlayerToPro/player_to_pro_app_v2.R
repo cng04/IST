@@ -51,28 +51,51 @@ scale_stats <- function(df, cols) {
 
 # Function to determine similarity score between current usport player and pro player
 get_similar_players <- function(usports_player, k = 10) {
-  # Grab USPORTS stats
-  u_row <- current_players %>% filter(Player == usports_player, Season == "Total")
+  usports_player <- trimws(usports_player)
   
-  # Select comparable stats
-  stat_cols <- c("PPG", "REB", "AST", "STL", "BLK", "FG%", "3P%", "FT%") 
-
-  # Scale pro player stats
-  pro_scaled <- pro_players_usports_data %>%
+  # Columns to compare
+  stat_cols <- c("PPG", "REB", "AST", "STL", "BLK", "FG%", "3P%", "FT%")
+  
+  # Grab the USPORTS player's Total row
+  u_row <- current_players %>%
+    filter(trimws(Player) == usports_player, Season == "Total") %>%
+    select(all_of(stat_cols))
+  
+  # Grab pro players with Total row
+  pro_raw <- pro_players_usports_data %>%
     filter(Season == "Total") %>%
     select(Player, all_of(stat_cols), `All USports Teams Played For`) %>%
-    drop_na() %>%
-    scale_stats(stat_cols)
+    drop_na()
   
-  # Scale the selected USPORTS row
-  u_scaled <- u_row %>% select(all_of(stat_cols)) %>% scale()
+  # Bind together for consistent scaling
+  all_data <- bind_rows(
+    u_row %>% mutate(source = "u"),
+    pro_raw %>% select(all_of(stat_cols)) %>% mutate(source = "p")
+  )
   
-  # Compute distances - can try to change this later, if doesn't work rn
-  pro_scaled$dist <- apply(pro_scaled[stat_cols], 1, function(x) sum((x - u_scaled)^2))
+  # Scale selected stats (drop = FALSE ensures it's still a data frame)
+  scaled_mat <- scale(as.matrix(all_data[, stat_cols, drop = FALSE]))
   
-  # Return top-k closest
-  pro_scaled %>% arrange(dist) %>% head(k) %>% select(Player, `All USports Teams Played For`, dist, all_of(stat_cols))
+  # Separate back out
+  u_scaled_vec <- scaled_mat[all_data$source == "u", , drop = FALSE]
+  pro_scaled_mat <- scaled_mat[all_data$source == "p", , drop = FALSE]
+  
+  # Compute squared Euclidean distances
+  dists <- rowSums((pro_scaled_mat - matrix(u_scaled_vec,
+                                            nrow = nrow(pro_scaled_mat),
+                                            ncol = ncol(pro_scaled_mat),
+                                            byrow = TRUE))^2)
+  
+  # Add distances back to the raw pro dataset
+  pro_raw$dist <- dists
+  
+  # Return top-k
+  pro_raw %>%
+    arrange(dist) %>%
+    head(k) %>%
+    select(Player, `All USports Teams Played For`, dist, all_of(stat_cols))
 }
+
 
 ui <- fluidPage(
   titlePanel("Player To Pro Dashboard"),
