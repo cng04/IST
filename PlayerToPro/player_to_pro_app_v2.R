@@ -67,13 +67,14 @@ get_similar_players <- function(usports_player, k = 10) {
     select(Player, all_of(stat_cols), `All USports Teams Played For`) %>%
     drop_na()
   
-  # Bind together for consistent scaling
+  # Bind together for consistent scaling, current usports players tagged with "u" and pro player tagged with "p"
   all_data <- bind_rows(
     u_row %>% mutate(source = "u"),
     pro_raw %>% select(all_of(stat_cols)) %>% mutate(source = "p")
   )
   
   # Scale selected stats (drop = FALSE ensures it's still a data frame)
+  # Standardizes by subtracting the column mean then dividing by standard deviation for that column
   scaled_mat <- scale(as.matrix(all_data[, stat_cols, drop = FALSE]))
   
   # Separate back out
@@ -91,7 +92,7 @@ get_similar_players <- function(usports_player, k = 10) {
   
   # Return top-k
   pro_raw %>%
-    arrange(dist) %>%
+    arrange(dist) %>% # arrange sorts players by increasing distance (smallest distance first)
     head(k) %>%
     select(Player, `All USports Teams Played For`, dist, all_of(stat_cols))
 }
