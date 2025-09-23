@@ -179,14 +179,13 @@ server <- function(input, output, session) {
     
     # ---- Pro player USPORTS side (right, above) ----
     pro_usports_history <- pro_players_usports_data %>%
-      filter(trimws(Player) == trimws(selected_pro_player()),
-             Season != "Total") %>%
-      arrange(Season)
+      filter(trimws(Player) == trimws(selected_pro_player())) %>%
+      arrange(Season) %>% select(-Player, -Height, -Hometown, -`All USports Teams Played For`)
     
     # ---- Pro player PRO side (right, below) ----
     pro_history <- pro_data %>%
       filter(trimws(Player) == trimws(selected_pro_player())) %>%
-      arrange(desc(Season))
+      arrange(desc(Season)) %>% select(-Player)
     
     showModal(modalDialog(
       title = paste(selected_usports_player(), "vs", selected_pro_player()),

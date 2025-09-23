@@ -110,7 +110,7 @@ def scrape_pro_seasons_for_players(player_names, pro_seasons_url):
 def scrape_usports_career_for_players(player_names, usports_stats_url):
     """Scrape USports career table (after 'Playing Career' title) for player, season, team data."""
     all_career_data = []
-    career_headers = ["Player", "Season", "Team"]
+    career_headers = ["Player", "Season", "Team", "Elig"]
     failed_players = []
     
     for player in player_names:
@@ -142,7 +142,8 @@ def scrape_usports_career_for_players(player_names, usports_stats_url):
                 if len(cols) >= 2:  # At least season and team columns
                     season = cols[0].get_text(strip=True)
                     team = cols[1].get_text(strip=True)
-                    career_data = [player["readable_name"], season, team]
+                    elig = cols[3].get_text(strip=True)
+                    career_data = [player["readable_name"], season, team, elig]
                     all_career_data.append(career_data)
                     
         except requests.RequestException as e:
