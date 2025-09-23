@@ -109,8 +109,21 @@ server <- function(input, output, session) {
       # No team is selected / all teams are cleared display all players
       current_players %>% filter(Season == "Total")
     } else {
+      # input_values from the selected filter in R Shiny UI
+      input_values <- trimws(strsplit(input$usports_teams, ",")[[1]])
+      
       # If team is selected show filters
-      current_players %>% filter(Season == "Total", Team %in% input$usports_teams)
+      current_players %>% filter(Season == "Total",
+                                 sapply(strsplit(Team, ","), function(team_values) {
+                                   # row by row
+                                   # team_values are from data frame
+                                   team_values <- trimws(team_values)
+                                   
+                                   # keep if there's any overlap
+                                   any(team_values %in% input_values)
+                                   
+                                   # returns a vector, one value per row of Team indicating whether that row should be kept
+                                 }))
     }
     
     # Keeping only columns we want
