@@ -6,6 +6,7 @@ library(dplyr)
 library(rlang)
 library(rsconnect)
 library(shinyjs)
+library(shinyWidgets)
 
 # current usports players
 current_players <- read_excel("data/processed_current_usports_players.xlsx")
@@ -49,8 +50,20 @@ scale_stats <- function(df, cols) {
   df %>% mutate(across(all_of(cols), scale))
 }
 
+# Map for similar positions - maybe need to keep updating this
+similar_positions_map <- list(
+  G  = c("G", "PG", "SG"),
+  "F"  = c("F", "SF", "PF"),
+  C  = c("C", "F/C", "C/F"),
+  "G/F" = c("G", "F", "SF", "SG", "G/F"),
+  PG = c("PG", "G"),
+  SG = c("SG", "G"),
+  SF = c("SF", "F"),
+  PF = c("PF", "F")
+)
+
 # Function to determine similarity score between current usport player and pro player
-get_similar_players <- function(usports_player, k = 10) {
+get_similar_players <- function(usports_player, filter_by_similar_position = FALSE, k = 10) {
   usports_player <- trimws(usports_player)
   
   # Columns to compare
@@ -59,12 +72,12 @@ get_similar_players <- function(usports_player, k = 10) {
   # Grab the USPORTS player's Total row
   u_row <- current_players %>%
     filter(trimws(Player) == usports_player, Season == "Total") %>%
-    select(all_of(stat_cols))
+    select(Player, Position, all_of(stat_cols))
   
   # Grab pro players with Total row
   pro_raw <- pro_players_usports_data %>%
     filter(Season == "Total") %>%
-    select(Player, all_of(stat_cols), `All USports Teams Played For`) %>%
+    select(Player, Position, all_of(stat_cols), `All USports Teams Played For`) %>%
     drop_na()
   
   # Bind together for consistent scaling, current usports players tagged with "u" and pro player tagged with "p"
@@ -90,6 +103,15 @@ get_similar_players <- function(usports_player, k = 10) {
   # Add distances back to the raw pro dataset
   pro_raw$dist <- dists
   
+  if (filter_by_similar_position) {
+    # Also filter by position
+    u_position <- u_row$Position[1]
+    valid_positions <- similar_positions_map[[u_position]]
+    if (!is.null(valid_positions)) {
+      pro_raw <- pro_raw %>% filter(Position %in% valid_positions)
+    }
+  } 
+  
   # Return top-k
   pro_raw %>%
     arrange(dist) %>% # arrange sorts players by increasing distance (smallest distance first)
@@ -100,13 +122,19 @@ get_similar_players <- function(usports_player, k = 10) {
 
 ui <- fluidPage(
   titlePanel("Player To Pro Dashboard"),
-  br(),
+  # br(),
   fluidRow(
     # Current Player Section
     column(
       6,
       style = "overflow-x: auto;",
-      shinyWidgets::pickerInput("usports_teams", "Please Select a USPORTS Team: ", usports_teams_sorted, multiple = TRUE, options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")),
+      # shinyWidgets::pickerInput("usports_teams", "Please Select a USPORTS Team: ", usports_teams_sorted, multiple = TRUE, options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")),
+      # checkboxInput("filter_players_by_position", "Filter Pro Players by Position", FALSE),
+      div(
+        style = "display: flex; align-items: flex-start; gap: 15px",
+        checkboxInput("filter_players_by_position", "Filter Pro Players by Position", FALSE),
+        shinyWidgets::pickerInput("usports_teams", "Please Select a USPORTS Team: ", usports_teams_sorted, multiple = TRUE, options = list(`actions-box` = TRUE, `deselect-all-text` = "Clear", `select-all-text` = "All")),
+        ),
       dataTableOutput("current_usports_players_table")
     ),
     column(
@@ -128,6 +156,20 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+  output$current_usports_player_position <- renderText({
+      req(selected_usports_player())
+      current_players %>% filter(
+      trimws(Player) == trimws(selected_usports_player()), Season == "Total"
+    ) %>% pull(Position)
+  })
+  
+  output$pro_player_position <- renderText({
+      req(selected_pro_player())
+      pro_players_usports_data %>% filter(
+      trimws(Player) == trimws(selected_pro_player()), Season == "Total"
+    ) %>% pull(Position)
+  })
+
   filtered_current_usports_players <- reactive({
     data <- if (is.null(input$usports_teams) || length(input$usports_teams) == 0) {
       # No team is selected / all teams are cleared display all players
@@ -161,16 +203,23 @@ server <- function(input, output, session) {
   })
   
   selected_pro_player <- reactive({
-    s <- input$pro_players_general_info_table_rows_selected
-    if (length(s)) filtered_pro_players_general_info()[s, "Player"] else NULL
+    s1 <- input$pro_players_general_info_table_rows_selected
+    s2 <- input$pro_players_similar_positions_rows_selected
+    
+    idx <- if (length(s1)) s1 else if (length(s2)) s2 else NULL
+    
+    if (!is.null(idx)) {
+      return (filtered_pro_players_general_info()[idx, "Player"])
+    } else {
+      NULL
+    }
   })
-  
   
   filtered_pro_players_general_info <- reactive({
     if (is.null(selected_usports_player())) {
       data <- pro_players_usports_data %>% filter(Season == "Total")
     } else {
-      data <- get_similar_players(selected_usports_player())
+      data <- get_similar_players(selected_usports_player(), input$filter_players_by_position)
     }
     data %>% select(Player, `All USports Teams Played For`)
   })
@@ -178,6 +227,7 @@ server <- function(input, output, session) {
   output$current_usports_players_table <- renderDataTable({
     DT::datatable(
       filtered_current_usports_players(),
+      rownames = FALSE,
       selection = "single",
       options = list(pageLength = 25, lengthMenu = c(10, 25, 50, 100))
     )
@@ -186,6 +236,7 @@ server <- function(input, output, session) {
   output$pro_players_general_info_table <- renderDataTable({
     DT::datatable(
       filtered_pro_players_general_info(),
+      rownames = FALSE,
       selection = "single",
       options = list(pageLength = 25, lengthMenu = c(10, 25, 50, 100))
     )
@@ -217,7 +268,10 @@ server <- function(input, output, session) {
     # ---- Pro player USPORTS side (right, above) ----
     pro_usports_history <- pro_players_usports_data %>%
       filter(trimws(Player) == trimws(selected_pro_player())) %>%
-      arrange(Season) %>% select(-Player, -Height, -Hometown, -`All USports Teams Played For`)
+      arrange(Season) %>% select(-Player, -Height, -Hometown, -`All USports Teams Played For`) %>%
+      rename(
+        Team = `USports Team`
+      )
     
     # ---- Pro player PRO side (right, below) ----
     pro_history <- pro_data %>%
@@ -245,38 +299,43 @@ server <- function(input, output, session) {
       fluidRow(
         column(
           6,
-          h4(paste(selected_usports_player(), " - USPORTS")),
+          h4(selected_usports_player()),
+          p(strong("Position: "), textOutput("current_usports_player_position", inline = TRUE)),
+          br(),
+          h4("USPORTS Career"),
           renderDT({
             datatable(
               usports_history,
-              options = list(pageLength = 10, scrollX = TRUE),
+              options = list(dom = "t", pageLength = 10, scrollX = TRUE),
               rownames = FALSE
             )
           })
         ),
         column(
           6,
-          h4(paste(selected_pro_player(), " - USPORTS")),
+          h4(selected_pro_player()),
+          p(strong("Position: "), textOutput("pro_player_position", inline = TRUE)),
+          br(),
+          h4("USPORTS Career"),
           renderDT({
             datatable(
               pro_usports_history,
-              options = list(pageLength = 10, scrollX = TRUE),
+              options = list(dom = "t", pageLength = 10, scrollX = TRUE),
               rownames = FALSE
             )
           }),
           br(),
-          h4(paste(selected_pro_player(), " - Professional Career")),
+          h4("Professional Career"),
           renderDT({
             datatable(
               pro_history,
-              options = list(pageLength = 10, scrollX = TRUE),
+              options = list(dom = "t", pageLength = 10, scrollX = TRUE),
               rownames = FALSE
             )
           })
-        )
       )
     ))
-  })
+  )})
 }
 
 shinyApp(
