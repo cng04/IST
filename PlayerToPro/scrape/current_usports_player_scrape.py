@@ -235,8 +235,8 @@ def main():
         # Save to Excel
         if flattened_data:
             df = pd.DataFrame(flattened_data)
-            df.to_excel('data/current_usports_players.xlsx', index=False)
-            print(f"Saved data for {len(all_player_data)} players to data/current_usports_players.xlsx")
+            df.to_excel('../data/current_usports_players.xlsx', index=False)
+            print(f"Saved data for {len(all_player_data)} players to ../data/current_usports_players.xlsx")
             print(f"Total rows: {len(flattened_data)}")
         else:
             print("No player data was successfully scraped")

@@ -212,7 +212,7 @@ def scrape_usports_stats_for_players(player_names, usports_stats_url):
 def save_dataframe_to_excel(df, filename, message=""):
     """Save DataFrame to Excel file with error handling."""
     try:
-        df.to_excel(f"data/{filename}", index=False, engine="openpyxl")
+        df.to_excel(f"../data/{filename}", index=False, engine="openpyxl")
         print(f"Data saved to {filename}")
         if message:
             print(message)
@@ -257,7 +257,7 @@ def main():
     all_failures = {}
     
     # Step 1: Load or scrape player summary
-    summary_file = "data/usports_players_to_pro_summary.xlsx"
+    summary_file = "../data/usports_players_to_pro_summary.xlsx"
     if os.path.exists(summary_file):
         print("Step 1: Loading existing player summary from Excel...")
         try:
@@ -286,7 +286,7 @@ def main():
 
     # Step 2: Load or scrape pro seasons data
     if player_names:
-        pro_seasons_file = "data/pro_season_data.xlsx"
+        pro_seasons_file = "../data/pro_season_data.xlsx"
         if os.path.exists(pro_seasons_file):
             print("Step 2: Loading existing pro seasons from Excel...")
             try:
@@ -311,7 +311,7 @@ def main():
     
     # Step 3: Load or scrape USports stats data
     if player_names:
-        usports_stats_file = "data/usports_stats_data.xlsx"
+        usports_stats_file = "../data/usports_stats_data.xlsx"
         if os.path.exists(usports_stats_file):
             print("Step 3: Loading existing USports stats from Excel...")
             try:
@@ -336,7 +336,7 @@ def main():
     
     # Step 4: Load or scrape USports career data
     if player_names:
-        career_file = "data/usports_career_data.xlsx"
+        career_file = "../data/usports_career_data.xlsx"
         if os.path.exists(career_file):
             print("Step 4: Loading existing USports career data from Excel...")
             try:
@@ -390,7 +390,7 @@ def main():
     try:
         from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        summary_filename = f"data/scrape_summary_{timestamp}.txt"
+        summary_filename = f"../data/scrape_summary_{timestamp}.txt"
         
         with open(summary_filename, 'w', encoding='utf-8') as f:
             f.write('\n'.join(summary_lines))
