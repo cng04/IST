@@ -2,3 +2,5 @@ pandas
 bs4
 requests
 numpy
+shiny
+openpyxl
